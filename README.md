@@ -1,12 +1,12 @@
 # Fileback
 
-**Your files, with a way back.**
+**Local file history and recovery.**
 
 Fileback is a small Windows-first desktop app that saves earlier versions of files in folders you choose. Recover an old essay, undo an accidental overwrite, or bring back a deleted file as a separate copy.
 
 **Status: v0.1 alpha.** Fileback is under development. Try it with a small test folder first, and keep an independent backup of important files. See [SECURITY.md](SECURITY.md) for security checks and release status.
 
-![Fileback desktop app with an earlier draft and its changes](docs/screenshot.jpg)
+![Fileback showing saved versions of a document and a comparison with the current file](docs/screenshot.png)
 
 ## What it does
 

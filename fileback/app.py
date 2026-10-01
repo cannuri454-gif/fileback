@@ -35,7 +35,7 @@ class App:
         self.version_rows = {}
         self.current_file = None
         self.last_scan = 'Waiting for first check'
-        root.title('Fileback — your files, with a way back')
+        root.title('Fileback')
         root.geometry('1180x780')
         root.minsize(940, 660)
         root.configure(bg=BG)
@@ -62,8 +62,8 @@ class App:
         sidebar = tk.Frame(self.root, bg='#23382f', width=235)
         sidebar.pack(side='left', fill='y')
         sidebar.pack_propagate(False)
-        self.label(sidebar, '↶  fileback', ('Segoe UI', 25, 'bold'), bg='#23382f', fg='#def0d1').pack(anchor='w', padx=24, pady=(28, 8))
-        self.label(sidebar, 'A way back to your work.', bg='#23382f', fg='#becdc1').pack(anchor='w', padx=24)
+        self.label(sidebar, 'Fileback', ('Segoe UI', 25, 'bold'), bg='#23382f', fg='#def0d1').pack(anchor='w', padx=24, pady=(28, 8))
+        self.label(sidebar, 'Local file history', bg='#23382f', fg='#becdc1').pack(anchor='w', padx=24)
         self.label(sidebar, 'PROTECTED FOLDERS', ('Segoe UI', 9, 'bold'), bg='#23382f', fg='#becdc1').pack(anchor='w', padx=24, pady=(36, 12))
         self.folder_list = tk.Listbox(sidebar, bg='#2d4439', fg='white', selectbackground='#4d7259', bd=0, highlightthickness=0, font=('Segoe UI', 10), height=9, exportselection=False)
         self.folder_list.pack(fill='x', padx=18)
@@ -79,11 +79,11 @@ class App:
         main.pack(side='left', fill='both', expand=True, padx=26, pady=25)
         header = tk.Frame(main, bg=BG)
         header.pack(fill='x')
-        self.label(header, 'Your work. A little safer.', ('Segoe UI', 25, 'bold')).pack(side='left')
+        self.label(header, 'Your file history', ('Segoe UI', 25, 'bold')).pack(side='left')
         self.pause_button = ttk.Button(header, text='Pause watching', command=self.toggle_pause)
         self.pause_button.pack(side='right', padx=(8, 0))
         ttk.Button(header, text='Check now', command=self.check_now).pack(side='right')
-        self.label(main, 'Earlier versions, ready when you need them.', fg='#6c786d').pack(anchor='w', pady=(6, 17))
+        self.label(main, 'Browse earlier versions and recover a copy.', fg='#6c786d').pack(anchor='w', pady=(6, 17))
         self.stats_label = self.label(main, '', font=('Segoe UI', 10, 'bold'))
         self.stats_label.pack(anchor='w', pady=(0, 15))
         searchbar = tk.Frame(main, bg=BG)
@@ -187,6 +187,7 @@ class App:
         selected = self.folder_list.curselection()
         if not selected:
             self.folder_toggle.configure(state='disabled')
+            self.folder_info.configure(text='Select a folder to view its details.' if self.folder_rows else 'Choose a folder to start.')
             return
         folder = self.folder_rows[selected[0]]
         self.folder_info.configure(text=folder['path'])

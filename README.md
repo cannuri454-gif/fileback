@@ -2,16 +2,16 @@
 
 **Your files, with a way back.**
 
-**Status: v0.1 alpha / portfolio project.** The source is ready to explore and test. This is not a production backup service or a certified virus-free download. Start with disposable test files. See [SECURITY.md](SECURITY.md) for the checks and remaining limits.
-
 Fileback is a small Windows-first desktop app that saves earlier versions of files in folders you choose. Recover an old essay, undo an accidental overwrite, or bring back a deleted file as a separate copy.
+
+**Status: v0.1 alpha.** Fileback is under development. Try it with a small test folder first, and keep an independent backup of important files. See [SECURITY.md](SECURITY.md) for security checks and release status.
 
 ![Fileback desktop app with an earlier draft and its changes](docs/screenshot.jpg)
 
 ## What it does
 
 - Watches chosen folders while the app is open, including when minimized.
-- Saves changed files every five seconds, without duplicating unchanged content.
+- Checks for changes every five seconds after each scan finishes, without saving duplicate versions of unchanged files.
 - Keeps history after a file is deleted.
 - Shows saved text and compares it with the current file.
 - Recovers a separate copy and refuses to overwrite an existing file.
@@ -20,17 +20,21 @@ Fileback is a small Windows-first desktop app that saves earlier versions of fil
 - Allows pausing all watching or individual folders.
 - Stores everything locally. No account, network requests, or paid service.
 
-## Try it
+## Get started
 
-**Windows executable:** the Windows workflow builds an unsigned `Fileback.exe` artifact. It does not need Python installed. There is no reviewed public binary release yet. Windows may show an unknown-publisher or reputation warning for unsigned builds. Do not disable your security software to run it. You can inspect and run the source instead.
-
-**From source:** install Python 3.11 or newer with Tk support, then run these commands from the project folder:
+Install Python 3.11 or newer with Tk support. Clone the repository and launch the app:
 
 ```powershell
+git clone https://github.com/cannuri454-gif/fileback.git
+cd fileback
 python run.py
 ```
 
 There are no third-party runtime dependencies. Python's standard Windows installer includes Tk; some Linux distributions need a separate Tk package. Windows is the tested platform for this first version.
+
+You can also download the source using **Code → Download ZIP**, extract it, and run `python run.py` from the extracted folder.
+
+### Save and recover a version
 
 1. Click **Protect a folder** and select a small folder to try first.
 2. Wait for the first check. Your existing files become the starting versions.
@@ -40,13 +44,15 @@ There are no third-party runtime dependencies. Python's standard Windows install
 
 The original file stays unchanged. **Compare with current file** highlights additions in green and removals in red. Comparisons go from the selected saved version to the current file.
 
-## Why use this if OneDrive or Google Drive already exists?
+## When Fileback is useful
 
-You might not need it. [OneDrive](https://support.microsoft.com/en-us/onedrive/restore-a-previous-version-of-a-file-stored-in-onedrive) and [Google Drive](https://support.google.com/drive/answer/2409045) already offer file versions. If your cloud history meets your needs, keep using it.
+Use Fileback when you want to:
 
-Fileback is for people who want a separate, local record of chosen folders without uploading those files or signing into a service. It also gives a simple text comparison and recovery as a new copy. It can watch folders outside a cloud-sync folder.
+- Keep earlier versions of files in folders outside your cloud-sync folder.
+- Save local history without uploading your files or signing into a service.
+- Compare changes in a text file and recover an earlier version as a new copy.
 
-It does not provide remote backup, cross-device sync, sharing, or protection against a failed disk. Windows File History and other established tools also cover parts of this use case. The goal here is a small, understandable local-history tool and a practical software engineering project, not a claim that existing backup tools are inadequate.
+[OneDrive](https://support.microsoft.com/en-us/onedrive/restore-a-previous-version-of-a-file-stored-in-onedrive) and [Google Drive](https://support.google.com/drive/answer/2409045) also offer file versions. Fileback can sit alongside an existing backup setup. It does not provide cloud sync, sharing, or protection against disk failure.
 
 ## Current limits
 
@@ -66,7 +72,7 @@ This is a working first version, not a replacement for an off-device backup.
 
 ## Where history lives
 
-On Windows, history is stored in `%LOCALAPPDATA%\Fileback\history.sqlite3`. It is separate from the project and your protected folders. Pausing a folder leaves its history intact. No personal history is included in the source archive or executable.
+On Windows, history is stored in `%LOCALAPPDATA%\Fileback\history.sqlite3`. It is separate from the app and your protected folders. Pausing a folder leaves its history intact.
 
 For a separate test history:
 
@@ -96,6 +102,10 @@ Tests cover edits, binary and empty files, deduplication, deletion and recreatio
 
 ## Build a Windows executable
 
+There is no reviewed public binary release yet. The [Windows build workflow](https://github.com/cannuri454-gif/fileback/actions/workflows/windows.yml) produces an unsigned `Fileback.exe` development artifact. Downloading workflow artifacts requires a GitHub account. The executable does not need Python installed.
+
+Unsigned builds may show Windows publisher or reputation warnings. The local antivirus scan did not complete, so no clean malware verdict is claimed. Do not disable your security software to run a build. See [SECURITY.md](SECURITY.md) for details.
+
 Build on Windows, from a virtual environment:
 
 ```powershell
@@ -114,11 +124,11 @@ The result is `dist/Fileback.exe`. The GitHub Actions workflow runs tests, check
 - Better rename tracking and encrypted history.
 - Packaging and testing on macOS and Linux.
 
-## CV wording
+## Report a bug or contribute
 
-> Built Fileback, a Python desktop app that keeps local file history and safely recovers earlier versions, using SQLite, background workers, SHA-256 checks, and automated tests.
+Open an [issue](https://github.com/cannuri454-gif/fileback/issues) with the steps to reproduce the problem, your Windows and Python versions, and what you expected to happen. Use sample files rather than personal documents. Do not attach your history database or private file contents.
 
-Use this as an AI-assisted project and be ready to explain the storage model, safe recovery, polling trade-offs, and tests. Avoid claims about users or adoption until you have them.
+For code changes, open a pull request and describe the behavior you changed. Run the tests above before submitting. See [SECURITY.md](SECURITY.md) for reporting sensitive problems.
 
 ## License
 

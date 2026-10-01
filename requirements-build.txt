@@ -1,0 +1,2 @@
+# Only needed to build an executable. Running the source needs no pip packages.
+pyinstaller==6.20.0

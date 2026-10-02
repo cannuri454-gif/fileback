@@ -12,6 +12,28 @@ import zlib
 EXCLUDED = {'.git', 'node_modules', '__pycache__', '.venv', 'venv', '$RECYCLE.BIN', 'System Volume Information'}
 
 
+def opened_path(stream):
+    """On Windows, check the actual open handle, not only a mutable pathname."""
+    if os.name != 'nt':
+        return None
+    import ctypes
+    import msvcrt
+    from ctypes import wintypes
+    function = ctypes.WinDLL('kernel32', use_last_error=True).GetFinalPathNameByHandleW
+    function.argtypes = [wintypes.HANDLE, wintypes.LPWSTR, wintypes.DWORD, wintypes.DWORD]
+    function.restype = wintypes.DWORD
+    buffer = ctypes.create_unicode_buffer(32768)
+    length = function(msvcrt.get_osfhandle(stream.fileno()), buffer, len(buffer), 0)
+    if not length or length >= len(buffer):
+        raise OSError(ctypes.get_last_error(), 'Could not verify the open file path.')
+    path = buffer.value
+    if path.startswith('\\\\?\\UNC\\'):
+        path = '\\\\' + path[8:]
+    elif path.startswith('\\\\?\\'):
+        path = path[4:]
+    return Path(path)
+
+
 class Store:
     def __init__(self, directory, *, max_file_bytes=50 * 1024**2, max_storage_bytes=1024**3, versions_per_file=50):
         self.directory = Path(directory).resolve()
@@ -60,41 +82,61 @@ class Store:
 
     def capture(self, folder_id, relative):
         """Read one stable version, then atomically commit bytes and metadata."""
-        with self.lock:
-            folder = self.db.execute('SELECT path FROM folders WHERE id=?', (folder_id,)).fetchone()
-        if not folder:
-            raise ValueError('Unknown folder.')
-        root = Path(folder['path'])
+        try:
+            data = self.read_source(folder_id, relative, self.max_file_bytes)
+        except ValueError as error:
+            if str(error) in {'File is outside the protected folder or uses a link.', 'File is too large or changed while reading.'}:
+                return False
+            raise
         rel = Path(relative)
-        if rel.is_absolute() or '..' in rel.parts:
-            raise ValueError('Invalid relative file path.')
-        source = root / rel
-        resolved = source.resolve()
-        if not resolved.is_relative_to(root) or resolved.is_relative_to(self.directory):
-            return False
-        # Windows junctions and symbolic links can point outside the watched folder.
-        if any(p.is_symlink() or (hasattr(p, 'is_junction') and p.is_junction()) for p in [source, *source.parents] if p != root.parent):
-            return False
-        before = source.stat()
-        if not source.is_file() or before.st_size > self.max_file_bytes:
-            return False
-        with source.open('rb') as stream:
-            data = stream.read(self.max_file_bytes + 1)
-        after = source.stat()
-        if len(data) > self.max_file_bytes or (before.st_mtime_ns, before.st_size) != (after.st_mtime_ns, after.st_size):
-            return False
         digest = hashlib.sha256(data).hexdigest()
         compressed = zlib.compress(data)
         with self.lock, self.db:
             self.db.execute('INSERT INTO files(folder_id,path) VALUES(?,?) ON CONFLICT DO NOTHING', (folder_id, rel.as_posix()))
             file = self.db.execute('SELECT * FROM files WHERE folder_id=? AND path=?', (folder_id, rel.as_posix())).fetchone()
-            if file['current_hash'] == digest and not file['deleted']:
+            retained = self.db.execute('SELECT 1 FROM versions WHERE file_id=? AND hash=? LIMIT 1', (file['id'], digest)).fetchone()
+            if file['current_hash'] == digest and not file['deleted'] and retained:
                 return False
             self.db.execute('INSERT INTO blobs VALUES(?,?,?) ON CONFLICT DO NOTHING', (digest, compressed, len(data)))
             self.db.execute('INSERT INTO versions(file_id,hash,created,size) VALUES(?,?,?,?)', (file['id'], digest, time.time(), len(data)))
             self.db.execute('UPDATE files SET current_hash=?,deleted=0 WHERE id=?', (digest, file['id']))
             self._prune()
         return True
+
+    def read_source(self, folder_id, relative, limit):
+        """Bounded, checked reads shared by capture and text comparison."""
+        with self.lock:
+            folder = self.db.execute('SELECT path FROM folders WHERE id=?', (folder_id,)).fetchone()
+        if not folder:
+            raise ValueError('Unknown folder.')
+        root = Path(folder['path'])
+        rel = Path(relative)
+        if rel.is_absolute() or rel.drive or '..' in rel.parts or any(':' in part for part in rel.parts):
+            raise ValueError('Invalid relative file path.')
+        source = root / rel
+        resolved = source.resolve()
+        if not resolved.is_relative_to(root) or resolved.is_relative_to(self.directory):
+            raise ValueError('File is outside the protected folder or uses a link.')
+        # Windows junctions and symbolic links can point outside the watched folder.
+        if any(p.is_symlink() or (hasattr(p, 'is_junction') and p.is_junction()) for p in [source, *source.parents] if p != root.parent):
+            raise ValueError('File is outside the protected folder or uses a link.')
+        before = source.stat()
+        if not source.is_file() or before.st_size > limit:
+            raise ValueError('File is too large or changed while reading.')
+        with source.open('rb') as stream:
+            actual = opened_path(stream)
+            if actual is not None and (not actual.is_relative_to(root) or actual.is_relative_to(self.directory)):
+                raise ValueError('File is outside the protected folder or uses a link.')
+            opened = os.fstat(stream.fileno())
+            if (opened.st_dev, opened.st_ino) != (before.st_dev, before.st_ino):
+                raise ValueError('File is too large or changed while reading.')
+            data = stream.read(limit + 1)
+            finished = os.fstat(stream.fileno())
+        after = source.stat()
+        fingerprint = lambda s: (s.st_dev, s.st_ino, s.st_mtime_ns, s.st_size)
+        if len(data) > limit or any(fingerprint(s) != fingerprint(before) for s in (opened, finished, after)):
+            raise ValueError('File is too large or changed while reading.')
+        return data
 
     def _prune(self):
         self.db.execute('''DELETE FROM versions WHERE id IN (
@@ -117,12 +159,16 @@ class Store:
             if not folder['active']:
                 continue
             root = Path(folder['path'])
-            if not root.is_dir():
+            if not root.is_dir() or root.is_symlink() or (hasattr(root, 'is_junction') and root.is_junction()):
                 errors.append(f"Folder unavailable: {root}")
                 continue
             seen, incomplete = set(), []
             for parent, dirs, names in os.walk(root, followlinks=False, onerror=incomplete.append):
                 parent = Path(parent)
+                if not parent.resolve().is_relative_to(root):
+                    dirs[:] = []
+                    incomplete.append(ValueError('A folder changed to a location outside the protected root.'))
+                    continue
                 dirs[:] = [d for d in dirs if d not in EXCLUDED and not (parent/d).is_symlink() and not (hasattr(Path, 'is_junction') and (parent/d).is_junction()) and not (parent/d).resolve().is_relative_to(self.directory)]
                 for name in names:
                     path = parent/name

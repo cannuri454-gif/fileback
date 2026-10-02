@@ -22,6 +22,8 @@ Fileback is a small Windows-first desktop app that saves earlier versions of fil
 
 ## Get started
 
+An unsigned Windows preview is available on the [Releases page](https://github.com/cannuri454-gif/fileback/releases). Extract the whole ZIP and run `Fileback.exe`. The ZIP includes dependency license notices and a separate checksum file identifies the checked download. This is an alpha preview; see the release verification report before using it with important files.
+
 Install Python 3.11 or newer with Tk support. Clone the repository and launch the app:
 
 ```powershell

@@ -7,6 +7,7 @@ from pathlib import Path
 import queue
 import threading
 import time
+import tempfile
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from .store import Store
@@ -300,14 +301,7 @@ class App:
                 if not path.is_file():
                     self.write_preview('The current file is missing. Switch off comparison to view the saved version.')
                     return
-                if path.stat().st_size > 1024**2:
-                    self.write_preview('The current file is too large for a text comparison.')
-                    return
-                with path.open('rb') as stream:
-                    current = stream.read(1024**2 + 1)
-                if len(current) > 1024**2:
-                    self.write_preview('The current file is too large for a text comparison.')
-                    return
+                current = self.store.read_source(self.current_file['folder_id'], self.current_file['path'], 1024**2)
                 text = '\n'.join(difflib.unified_diff(text.splitlines(), current.decode('utf-8-sig').splitlines(), fromfile='Saved version', tofile='Current file', lineterm='')) or 'No text changes between this version and the current file.'
             self.write_preview(text or '(Empty file)')
         except UnicodeError:
@@ -354,7 +348,36 @@ class App:
 def main():
     parser = argparse.ArgumentParser(description='Fileback — local file history')
     parser.add_argument('--data-dir', type=Path, help='Use a separate history folder (useful for testing)')
+    parser.add_argument('--self-test', action='store_true', help='Exercise the packaged app with temporary fictional files')
     args = parser.parse_args()
+    if args.self_test:
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            docs = base / 'documents'
+            docs.mkdir()
+            source = docs / 'draft.txt'
+            source.write_text('Earlier draft\n', encoding='utf-8')
+            store = Store(base / 'history')
+            store.add_folder(docs)
+            store.scan()
+            source.write_text('Current draft\n', encoding='utf-8')
+            store.scan()
+            root = tk.Tk()
+            root.withdraw()
+            app = App(root, store)
+            root.withdraw()
+            versions = store.versions(store.files()[0]['id'])
+            store.restore_copy(versions[-1]['id'], base / 'recovered.txt')
+            if (base / 'recovered.txt').read_text() != 'Earlier draft\n' or source.read_text() != 'Current draft\n':
+                raise RuntimeError('Packaged recovery self-test failed.')
+            app.close()
+            deadline = time.monotonic() + 10
+            while not app.closed and time.monotonic() < deadline:
+                root.update()
+                time.sleep(0.01)
+            if not app.closed:
+                raise RuntimeError('Packaged worker did not stop.')
+        return
     directory = args.data_dir or Path(os.environ.get('LOCALAPPDATA', Path.home() / '.local' / 'share')) / 'Fileback'
     root = tk.Tk()
     try:

@@ -137,6 +137,8 @@ class StoreTests(unittest.TestCase):
                 with real_open(self.folder / 'essay.txt', 'w') as writer:
                     writer.write('longer changed text')
                 return data
+            def fileno(inner):
+                return inner.stream.fileno()
         with patch.object(Path, 'open', lambda *a, **k: MutatingReader()):
             self.assertFalse(self.store.capture(self.folder_id, 'essay.txt'))
         self.assertEqual(self.store.stats()['versions'], 1)

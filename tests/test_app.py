@@ -84,3 +84,58 @@ class DesktopTests(unittest.TestCase):
             self.root.update()
             time.sleep(0.02)
         self.assertEqual(self.store.stats()['versions'], 3)
+
+    def test_existing_destination_refused_in_interface(self):
+        self.select_oldest()
+        with patch('fileback.app.filedialog.asksaveasfilename', return_value=str(self.source)), patch('fileback.app.messagebox.showerror') as error:
+            self.app.restore()
+        error.assert_called_once()
+        self.assertEqual(self.source.read_text(), 'Later draft\n')
+
+    def test_binary_preview_and_missing_current_file(self):
+        self.select_oldest()
+        self.source.unlink()
+        self.app.diff_mode.set(True)
+        self.app.preview()
+        self.assertIn('current file is missing', self.app.preview_text.get('1.0', 'end'))
+        self.source.write_bytes(b'\x00\xff')
+        self.store.scan()
+        self.app.diff_mode.set(False)
+        self.app.refresh_versions()
+        self.app.version_tree.selection_set(self.app.version_tree.get_children()[0])
+        self.app.preview()
+        self.assertIn('not a UTF-8 text file', self.app.preview_text.get('1.0', 'end'))
+
+    def test_comparison_rejects_changed_file_boundary(self):
+        self.select_oldest()
+        self.app.diff_mode.set(True)
+        with patch.object(self.store, 'read_source', side_effect=ValueError('File is outside the protected folder or uses a link.')):
+            self.app.preview()
+        self.assertIn('outside the protected folder', self.app.preview_text.get('1.0', 'end'))
+
+    def test_damaged_history_recovery_shows_error(self):
+        self.select_oldest()
+        with self.store.db:
+            self.store.db.execute('UPDATE blobs SET data=?', (b'corrupt',))
+        target = self.base / 'copy.txt'
+        with patch('fileback.app.filedialog.asksaveasfilename', return_value=str(target)), patch('fileback.app.messagebox.showerror') as error:
+            self.app.restore()
+        error.assert_called_once()
+        self.assertFalse(target.exists())
+
+    def test_invalid_folder_and_cancelled_folder_dialog(self):
+        with patch('fileback.app.filedialog.askdirectory', return_value=str(self.base / 'missing')), patch('fileback.app.messagebox.showerror') as error:
+            self.app.add_folder()
+            error.assert_called_once()
+        with patch('fileback.app.filedialog.askdirectory', return_value=''):
+            self.app.add_folder()
+        self.assertEqual(len(self.store.folders()), 1)
+
+    def test_background_error_is_visible_and_check_when_paused(self):
+        self.app.messages.put(('error', 'history unavailable'))
+        self.root.after_cancel(self.app.pump_timer)
+        self.app.pump()
+        self.assertIn('history unavailable', self.app.status.cget('text'))
+        self.app.toggle_pause()
+        self.app.check_now()
+        self.assertIn('Watching is paused', self.app.status.cget('text'))

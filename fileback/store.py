@@ -202,11 +202,14 @@ class Store:
 
     def content(self, version_id):
         with self.lock:
-            row = self.db.execute('SELECT blobs.* FROM versions JOIN blobs ON blobs.hash=versions.hash WHERE versions.id=?', (version_id,)).fetchone()
+            row = self.db.execute('SELECT blobs.hash, blobs.size, CASE WHEN length(blobs.data)<=? THEN blobs.data ELSE NULL END AS data FROM versions JOIN blobs ON blobs.hash=versions.hash WHERE versions.id=?',
+                                  (self.max_file_bytes + 65536, version_id)).fetchone()
             if not row:
                 raise ValueError('This version is no longer in history. Refresh the list.')
             if not isinstance(row['size'], int) or not 0 <= row['size'] <= self.max_file_bytes:
                 raise ValueError('This saved version has an invalid size. Recovery stopped.')
+            if not isinstance(row['data'], bytes):
+                raise ValueError('This saved version has invalid or oversized compressed data. Recovery stopped.')
             try:
                 decoder = zlib.decompressobj()
                 # Do not let damaged or modified history expand without a limit.

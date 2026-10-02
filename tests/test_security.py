@@ -107,6 +107,15 @@ class SecurityTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 self.store.content(version)
 
+    def test_wrong_blob_type_and_oversized_blob_rejected(self):
+        version = self.save()
+        self.store.max_file_bytes = 100
+        for value in ('text instead of bytes', b'x' * (100 + 65537)):
+            with self.store.db:
+                self.store.db.execute('UPDATE blobs SET data=?', (value,))
+            with self.assertRaises(ValueError):
+                self.store.content(version)
+
     def test_abrupt_process_exit_rolls_back_uncommitted_transaction(self):
         self.save()
         code = "import sqlite3,sys,os; db=sqlite3.connect(sys.argv[1]); db.execute('BEGIN IMMEDIATE'); db.execute('DELETE FROM versions'); os._exit(7)"

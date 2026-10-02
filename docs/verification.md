@@ -2,7 +2,7 @@
 
 Verified on Windows 11 with Python 3.14.3 on 2 October 2026.
 
-- `python -m unittest discover -s tests -v`: 42 tests discovered; 41 passed, 1 skipped because this Windows account could not create a symbolic link. The Windows junction test passed.
+- `python -m unittest discover -s tests -v`: 43 tests discovered; 42 passed, 1 skipped because this Windows account could not create a symbolic link. The Windows junction test passed.
 - Coverage.py 7.16.2 measured 83% combined statement/branch coverage across the application, including 91% in storage. Coverage is a measurement, not proof of correctness.
 - Additional tests cover path and alternate-stream rejection, checked open handles, concurrent capture, damaged compressed content, incomplete/failed writes, retained-content eviction, SQL-like names and transactional recovery after abrupt process exit.
 - Saved and verified every byte in 1,000 fictional 2 KB files. The local run took about 23 seconds while other release checks were running; this is a smoke benchmark, not a performance guarantee.

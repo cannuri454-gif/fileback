@@ -21,14 +21,22 @@ jobs:
           python -m coverage report --fail-under=80
       - name: Check application source
         run: python -m bandit -r fileback run.py
+      - name: Check larger fictional folder
+        run: python tools/stress_check.py
       - name: Audit build dependencies
         run: python -m pip_audit -r requirements-build.txt -r requirements-dev.txt
       - name: Build executable
         run: python -m PyInstaller --noconfirm --clean --onefile --windowed --name Fileback run.py
       - name: Exercise packaged app
         run: |
+          $env:FILEBACK_SELF_TEST_LOG = Join-Path $env:RUNNER_TEMP 'fileback-self-test.log'
           $process = Start-Process -FilePath 'dist/Fileback.exe' -ArgumentList '--self-test' -PassThru -WindowStyle Hidden
-          if (-not $process.WaitForExit(60000)) { throw 'Packaged self-test timed out.' }
+          if (-not $process.WaitForExit(60000)) {
+            if (Test-Path $env:FILEBACK_SELF_TEST_LOG) { Get-Content $env:FILEBACK_SELF_TEST_LOG }
+            Stop-Process -Id $process.Id -Force
+            throw 'Packaged self-test timed out.'
+          }
+          if (Test-Path $env:FILEBACK_SELF_TEST_LOG) { Get-Content $env:FILEBACK_SELF_TEST_LOG }
           $process.Refresh()
           if ($process.ExitCode -ne 0) { throw "Packaged self-test exited with $($process.ExitCode)." }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

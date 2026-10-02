@@ -6,8 +6,8 @@ Checked on Windows 11 on 2 October 2026. These are alpha previews, not certified
 
 | Check | ModelCheck | Fileback |
 | --- | --- | --- |
-| Automated tests | 59 passed | 41 passed, 1 skipped |
-| Combined statement/branch coverage | 90% | 83% |
+| Automated tests | 70 passed | 44 passed, 1 skipped |
+| Combined statement/branch coverage | 89% | 83% |
 | Core evaluation/storage coverage | 93% | 91% |
 | Bandit application-source scan | No flagged issues, no suppressed checks | No flagged issues, no suppressed checks |
 | pip-audit of declared runtime/build/test requirements | No known vulnerabilities found at check time | No known vulnerabilities found at check time |
@@ -28,8 +28,8 @@ Coverage.py 7.16.2 measures exercised statements and branches together. Coverage
 
 ## Failure and security cases tested
 
-- Fileback: concurrent capture, unchanged/same-size edits, deleted/recreated files, unavailable folders, incomplete scans, pause/resume, binary and empty files, safe recovery, refusal to overwrite, damaged/truncated/oversized compressed content, invalid sizes, SQL-like and Unicode filenames, link/junction exclusion, path escapes, retention cleanup, failed writes, transaction rollback after an abrupt process exit, UI errors and clean worker shutdown.
-- ModelCheck: correct metrics on known predictions, training-only preprocessing, repeatable splits, split membership and group/date boundaries, tied dates, edge seeds/fractions, missing labels/groups/features, unknown categories, category/row/column/byte limits, extreme numbers, invalid dates, invalid UTF-8, BOM, quoting/multiline CSV, HTML injection attempts, escaped reports, damaged JSON history, failed history saves, protected/atomic exports, cancellation races, closing during work, settings restoration and rendering at a smaller window size.
+- Fileback: concurrent capture, unchanged/same-size edits, deleted/recreated files, unavailable folders, incomplete scans, pause/resume, binary and empty files, safe recovery, refusal to overwrite, damaged/truncated/oversized/wrong-type compressed content, invalid sizes, SQL-like and Unicode filenames, link/junction exclusion, path escapes, retention cleanup, failed writes, transaction rollback after an abrupt process exit, UI errors and clean worker shutdown.
+- ModelCheck: correct metrics on known predictions, training-only preprocessing, repeatable splits, split membership and group/date boundaries, tied dates, edge seeds/fractions, missing labels/groups/features, unknown categories, category/row/column/byte limits, extreme numbers, invalid dates, invalid UTF-8, BOM, quoting/multiline CSV, HTML injection attempts, escaped reports, damaged JSON history and invalid saved report/settings shapes, failed history saves, protected/atomic exports, cancellation races, closing during work, settings restoration and rendering at a smaller window size.
 - 300 deterministic random-byte CSV cases were rejected without an unexpected exception.
 - A fictional 50,000-row/eight-feature ModelCheck dataset completed logistic regression and random forest in about six seconds. This does not test the simultaneous 200-column/100-MB worst case.
 - Fileback saved 1,000 fictional 2-KB files and verified every recovered byte in about 23 seconds. A separate automated test covers 250 files.
@@ -38,14 +38,14 @@ Coverage.py 7.16.2 measures exercised statements and branches together. Coverage
 
 ## Antivirus evidence
 
-Microsoft Defender was enabled with real-time protection. Definitions: **1.459.509.0**, updated 1 October 2026. No configured path exclusion matched either release location; archive scanning was enabled. Custom scan-start (event 1000) and scan-finish (event 1001) pairs were checked for:
+Microsoft Defender was enabled with real-time protection. Definitions: **1.459.514.0**, updated 2 October 2026. Archive scanning was enabled. This account could not view the configured path exclusions, so their absence could not be verified. Custom scan-start (event 1000) and scan-finish (event 1001) pairs naming the requested artifacts were checked for:
 
 | Artifact | Defender scan ID |
 | --- | --- |
-| Fileback.exe | 99329365-E5E9-4D63-8719-AA49198D0F98 |
-| ModelCheck application folder | AB7EE5AE-1760-4672-8CD4-85C60B5A66FF |
-| Fileback-Windows.zip | 4F15F5E6-CC11-4651-9D83-172C4404D12E |
-| ModelCheck-Windows.zip | F8CF973C-DE89-4880-B699-5144A23DD081 |
+| Fileback.exe | AAEE8503-15FC-4072-A316-C71E4C73E65F |
+| ModelCheck application folder | 58032933-2A46-47A9-B9F2-618BC2717091 |
+| Fileback-Windows.zip | 48AD02B1-6306-4B44-9A6F-9DB68B9370A7 |
+| ModelCheck-Windows.zip | 26029FF8-A405-42B5-B324-938AB7B5DF4C |
 
 Earlier Fileback scan attempts failed; the new scans above completed. No matching detection was returned by Defender's threat-detection history. A completed scan with no detection is limited evidence from one engine and one set of definitions, not proof that a file is safe. No VirusTotal/multiple-engine scan or independent penetration test was performed. No private user data or history database was submitted to an external scanner.
 
@@ -53,10 +53,10 @@ Earlier Fileback scan attempts failed; the new scans above completed. No matchin
 
 SHA-256 identifies the checked files. Compare your download with the published checksum; a matching hash confirms the bytes, not safety.
 
-- `Fileback.exe`: `fae9e39d2826f34a0d5cf1565586407718ba49dabda1e24f3d74b43f806f647a`
-- `Fileback-Windows.zip`: `a39cddc8c8e9d4124170bb28895ca22862455646e854e94df8f98dcd90beac67`
-- `ModelCheck-Windows.zip`: `f3fe7baf64cfe677119c9c8f3a79e37e120d96435870b387ec2d57e90678999b`
-- `modelcheck-windows/ModelCheck/ModelCheck.exe`: `82ab3555ff8954ac22765376a1852bb90821282fc32f19af7db0890be7b7a615`
+- `Fileback.exe`: `f5bd335d6d14f3c03b8c4e727aeb85fee6306999b4c11d4abea88319218fad84`
+- `Fileback-Windows.zip`: `e5e18257db0916a981d749e07f9884fb16c330ad3be0f1718db7e02f3b1213b8`
+- `ModelCheck-Windows.zip`: `0340c06f59d431a17292f94ea229d8262430fb1b9d2f6ac11d758231bcc6e676`
+- `modelcheck-windows/ModelCheck/ModelCheck.exe`: `8263e5672ea4a15cb3e8c60a0a1f75fce78ab47dfa9d87d79843c5453cc33ede`
 
 ## Remaining limits
 
@@ -69,4 +69,4 @@ SHA-256 identifies the checked files. Compare your download with the published c
 
 ## Repeating the checks
 
-Use the repository's pinned requirements and Windows workflow. Local verification uses `python -m coverage run --branch --source=modelcheck -m pytest -q` for ModelCheck and `python -m coverage run --branch --source=fileback -m unittest discover -s tests -v` for Fileback. Run Bandit on the app package and launcher, pip-audit on the declared requirements, and `--self-test` on each exact built executable. Scan and hash every rebuilt archive separately. The repository workflow builds a different artifact on a different machine; local scan results do not automatically apply to that workflow artifact.
+Use the repository's pinned requirements and Windows workflow. Local verification uses `python -m coverage run --branch --source=modelcheck -m pytest -q` for ModelCheck and `python -m coverage run --branch --source=fileback -m unittest discover -s tests -v` for Fileback. The optional tools/stress_check.py scripts reproduce the larger fictional-input checks. Run Bandit on the app package and launcher, pip-audit on the declared requirements, and `--self-test` on each exact built executable. Scan and hash every rebuilt archive separately. The repository workflow builds a different artifact on a different machine; local scan results do not automatically apply to that workflow artifact.

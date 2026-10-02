@@ -39,6 +39,11 @@ jobs:
           if (Test-Path $env:FILEBACK_SELF_TEST_LOG) { Get-Content $env:FILEBACK_SELF_TEST_LOG }
           $process.Refresh()
           if ($process.ExitCode -ne 0) { throw "Packaged self-test exited with $($process.ExitCode)." }
+      - name: Diagnose failed executable startup
+        if: failure()
+        run: |
+          python -m PyInstaller --noconfirm --onefile --console --name FilebackDiagnostic run.py
+          python -c "import subprocess; result = subprocess.run(['dist/FilebackDiagnostic.exe', '--self-test'], timeout=30); raise SystemExit(result.returncode)"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: Fileback-Windows

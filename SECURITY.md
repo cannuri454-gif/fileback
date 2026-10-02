@@ -9,7 +9,7 @@ See the [release verification report](docs/release-verification.md) for test sco
 - Reviewed the application source for network calls, command execution, credential handling, file-path boundaries, and recovery behavior. The app has no network or shell-execution code and no third-party runtime dependencies.
 - Bandit 1.9.4 scanned the application package and launcher: no issues identified, with no suppressed checks.
 - pip-audit 2.10.1 checked the installed build packages listed in `docs/build-dependencies.txt`: no known vulnerabilities found at the time of the check.
-- 43 automated tests: 42 passed and 1 Windows symlink integration test was skipped because this account could not create symlinks. A separate unit test exercises the symlink guard without elevated permissions. A real Windows junction integration test passed.
+- 45 automated tests: 44 passed and 1 Windows symlink integration test was skipped because this account could not create symlinks. A separate unit test exercises the symlink guard without elevated permissions. A real Windows junction integration test passed.
 - New regression tests cover concurrent capture, transaction rollback after a forced process exit, failed recovery cleanup, Unicode/SQL-like filenames, storage eviction, and open-handle path checks. Capture and text comparison share the same bounded read checks.
 - Tests check refusal to overwrite existing files, content-hash verification, corrupt compressed content, invalid metadata sizes, and a limit on decompression output.
 - A packaged build was opened and used to recover an earlier demo draft. Its bytes matched the saved version and the current file remained unchanged. A later source hardening change added bounded decompression and was covered by automated tests.
